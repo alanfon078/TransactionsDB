@@ -26,7 +26,6 @@ namespace TransactionsDB.ConectionDB
             string query = "SELECT id, codigoDeBarras, nombre, precio, stock FROM product " +
                            "WHERE codigoDeBarras = @codigo AND descontinuado = 0";
 
-            // Usamos 'using' para asegurar que la conexión se cierre
             using (MySqlConnection conn = Conexion.ObtenerConexion())
             {
                 using (MySqlCommand cmd = new MySqlCommand(query, conn))
@@ -119,6 +118,71 @@ namespace TransactionsDB.ConectionDB
             }
 
             return exito;
+        }
+        /// <summary>
+        /// Agrega un nuevo producto a la base de datos usando una transacción.
+        /// </summary>
+        /// <param name="producto">El objeto Producto con los nuevos datos</param>
+        /// <returns>El ID del producto recién creado, o 0 si falla.</returns>
+        public int AgregarProducto(Producto producto)
+        {
+            int nuevoId = 0;
+
+            string query = @"INSERT INTO product (codigoDeBarras, nombre, precio, stock, descontinuado) 
+                     VALUES (@codigo, @nombre, @precio, @stock, 0);
+                     SELECT LAST_INSERT_ID();";
+
+            using (MySqlConnection conn = Conexion.ObtenerConexion())
+            {
+                MySqlTransaction transaction = null;
+                try
+                {
+                    transaction = conn.BeginTransaction();
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn, transaction))
+                    {
+                        cmd.Parameters.AddWithValue("@codigo", producto.CodigoDeBarras);
+                        cmd.Parameters.AddWithValue("@nombre", producto.Nombre);
+                        cmd.Parameters.AddWithValue("@precio", producto.Precio);
+                        cmd.Parameters.AddWithValue("@stock", producto.Stock);
+
+                        object result = cmd.ExecuteScalar();
+                        if (result != null)
+                        {
+                            nuevoId = Convert.ToInt32(result);
+                            transaction.Commit();
+                        }
+                        else
+                        {
+                            transaction.Rollback();
+                        }
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    Console.WriteLine("Error en transacción de inserción: " + ex.Message);
+                    try
+                    {
+                        if (transaction != null)
+                        {
+                            transaction.Rollback(); // Revertimos por algun error
+                        }
+                    }
+                    catch (Exception rbEx)
+                    {
+                        Console.WriteLine("Error crítico al hacer rollback: " + rbEx.Message);
+                    }
+
+                    if (ex.Number == 1062)
+                    {
+                        throw new Exception("Error: El código de barras '" + producto.CodigoDeBarras + "' ya existe en la base de datos.", ex);
+                    }
+
+                    throw new Exception("Error al procesar la transacción para agregar el producto.", ex);
+                }
+            }
+
+            return nuevoId;
         }
     }
 }

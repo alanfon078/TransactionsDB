@@ -9,10 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Interfaz\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="MySql.Data">
       <HintPath>..\..\..\OneDrive\Imágenes\MySql.Data.dll</HintPath>
     </Reference>

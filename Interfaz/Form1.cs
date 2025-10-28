@@ -1,6 +1,7 @@
 using System.Data;
 using TransactionsDB.Clases;
 using TransactionsDB.ConectionDB;
+using TransactionsDB.Interfaz;
 
 namespace TransactionsDB
 {
@@ -36,6 +37,24 @@ namespace TransactionsDB
         }
 
         /// <summary>
+        /// Verifica si un producto ya existe en el DataGridView
+        /// </summary>
+        /// <param name="codigoDeBarras">El código a buscar en el grid</param>
+        /// <returns>True si ya existe, False si no</returns>
+        private bool ProductoYaEstaEnGrid(string codigoDeBarras)
+        {
+            foreach (DataGridViewRow row in dgvProductos.Rows)
+            {
+                if (row.Cells["CodigoBarras"].Value != null &&
+                    row.Cells["CodigoBarras"].Value.ToString() == codigoDeBarras)
+                {
+                    return true; // Ya existe
+                }
+            }
+            return false; // No se encontró
+        }
+
+        /// <summary>
         /// Evento KeyPress para el TextBox del código de barras.
         /// Se activa al presionar "Enter".
         /// </summary>
@@ -62,13 +81,20 @@ namespace TransactionsDB
 
                 if (producto != null)
                 {
-                    dgvProductos.Rows.Add(
-                        producto.Id,
-                        producto.CodigoDeBarras,
-                        producto.Nombre,
-                        producto.Precio,
-                        producto.Stock
-                    );
+                    if (ProductoYaEstaEnGrid(producto.CodigoDeBarras))
+                    {
+                        MessageBox.Show("Este producto ya ha sido agregado a la lista.", "Producto duplicado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                    else
+                    {
+                        dgvProductos.Rows.Add(
+                            producto.Id,
+                            producto.CodigoDeBarras,
+                            producto.Nombre,
+                            producto.Precio,
+                            producto.Stock
+                        );
+                    }
                 }
                 else
                 {
@@ -76,7 +102,7 @@ namespace TransactionsDB
                 }
             }
             catch (Exception ex)
-            { 
+            {
                 MessageBox.Show("Error al buscar producto: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -124,9 +150,57 @@ namespace TransactionsDB
             }
             catch (Exception ex)
             {
-                // Si el backend lanza un error (ej. la transacción falló), lo mostramos
                 MessageBox.Show("Error al descontinuar: " + ex.Message, "Error de Transacción", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        /// <summary>
+        /// Evento Click para el botón de Buscar.
+        /// Ejecuta la misma acción que presionar Enter.
+        /// </summary>
+        private void btnBuscar_Click(object sender, EventArgs e)
+        {
+            BuscarYAgregarProducto();
+        }
+
+        /// <summary>
+        /// Abre el formulario de detalle para crear un nuevo producto.
+        /// </summary>
+        private void btnAgregar_Click(object sender, EventArgs e)
+        {
+            // Abrimos el formulario de detalle como un diálogo
+            using (frmDetalleProducto formularioDetalle = new frmDetalleProducto())
+            {
+                // Mostramos el formulario y esperamos a que se cierre
+                if (formularioDetalle.ShowDialog(this) == DialogResult.OK)
+                {
+                    // Si el usuario guardó (DialogResult.OK), recogemos el producto
+                    Producto productoNuevo = formularioDetalle.ProductoCreado;
+
+                    if (productoNuevo != null)
+                    {
+                        // Validamos si ya está en el grid (por si acaso)
+                        if (ProductoYaEstaEnGrid(productoNuevo.CodigoDeBarras))
+                        {
+                            MessageBox.Show("El producto ya estaba en la lista.", "Información", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else
+                        {
+                            // Agregamos el nuevo producto al grid
+                            dgvProductos.Rows.Add(
+                                productoNuevo.Id,
+                                productoNuevo.CodigoDeBarras,
+                                productoNuevo.Nombre,
+                                productoNuevo.Precio,
+                                productoNuevo.Stock
+                            );
+
+                            MessageBox.Show("Producto agregado exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    }
+                }
+            }
+        }
+
     }
 }
