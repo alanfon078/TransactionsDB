@@ -1,15 +1,13 @@
 ﻿using MySql.Data.MySqlClient;
-using TransactionsDB;
+using System;
+using System.Data;
+using TransactionsDB.Clases;
 
-namespace ProyectoBD.Conexion
+namespace TransactionsDB.ConectionDB
 {
     internal class Conexion
     {
-        public Conexion()
-        {
-        }
 
-        // Método para establecer la conexión con la base de datos
         public static MySqlConnection ObtenerConexion()
         {
             MySqlConnection conexion = new MySqlConnection("server=localhost; database=TransactionsDB; user=root; pwd=root");
@@ -18,142 +16,109 @@ namespace ProyectoBD.Conexion
         }
 
         /// <summary>
-        /// Verifica las credenciales del usuario en la base de datos.
+        /// Busca un producto activo por su código de barras.
         /// </summary>
-        /// <param name="user">Nombre de usuario</param>
-        /// <param name="password">Contraseña sin encriptar</param>
-        /// <returns>True si el login es exitoso, False en caso contrario.</returns>
-        public bool Login(string user, string password)
+        /// <param name="codigo">El código de barras a buscar</param>
+        /// <returns>Un objeto Producto si se encuentra, o null si no existe o está descontinuado.</returns>
+        public Producto BuscarProductoPorCodigo(string codigo)
         {
-            bool loginExitoso = false;
-            try
+            Producto producto = null;
+            string query = "SELECT id, codigoDeBarras, nombre, precio, stock FROM product " +
+                           "WHERE codigoDeBarras = @codigo AND descontinuado = 0";
+
+            // Usamos 'using' para asegurar que la conexión se cierre
+            using (MySqlConnection conn = Conexion.ObtenerConexion())
             {
-                using (MySqlConnection conexion = ObtenerConexion())
+                using (MySqlCommand cmd = new MySqlCommand(query, conn))
                 {
-                    string query = "SELECT COUNT(*) FROM user WHERE user = @user AND password = SHA2(@password, 256)";
-                    MySqlCommand comando = new MySqlCommand(query, conexion);
-                    comando.Parameters.AddWithValue("@user", user);
-                    comando.Parameters.AddWithValue("@password", password);
+                    cmd.Parameters.AddWithValue("@codigo", codigo);
 
-                    int count = Convert.ToInt32(comando.ExecuteScalar());
-
-                    if (count > 0)
+                    try
                     {
-                        loginExitoso = true;
+                        using (MySqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                producto = new Producto
+                                {
+                                    Id = reader.GetInt32("id"),
+                                    CodigoDeBarras = reader.GetString("codigoDeBarras"),
+                                    Nombre = reader.GetString("nombre"),
+                                    Precio = reader.GetDecimal("precio"),
+                                    Stock = reader.GetInt32("stock")
+                                };
+                            }
+                        }
+                    }
+                    catch (MySqlException ex)
+                    {
+                        Console.WriteLine("Error al buscar producto: " + ex.Message);
+                        throw new Exception("Error de base de datos al buscar el producto.", ex);
                     }
                 }
-            }
-            catch (MySqlException ex)
-            {
-                // Manejar la excepción (por ejemplo, mostrar un mensaje de error)
-                Console.WriteLine("Error de conexión: " + ex.Message);
-            }
-            return loginExitoso;
+            } 
+
+            return producto;
         }
 
         /// <summary>
-        /// Agrega un nuevo usuario a la base de datos.
+        /// REQUISITO: Descontinúa un producto usando una transacción.
         /// </summary>
-        /// <param name="usuario">Objeto clsUser con los datos del nuevo usuario</param>
-        /// <returns>True si el registro es exitoso, False en caso contrario.</returns>
-        public bool RegistrarUsuario(clsUser usuario)
+        /// <param name="productoId">El ID del producto a descontinuar</param>
+        /// <returns>True si la transacción fue exitosa, False en caso contrario.</returns>
+        public bool DescontinuarProducto(int productoId)
         {
             bool exito = false;
-            try
+
+            using (MySqlConnection conn = Conexion.ObtenerConexion())
             {
-                using (MySqlConnection conexion = ObtenerConexion())
+                // 1. Iniciar la transacción
+                MySqlTransaction transaction = null;
+
+                try
                 {
-                    string query = @"INSERT INTO user (nombre, apellidos, user, password, correo, telefono, fechaNacimiento) 
-                                     VALUES (@nombre, @apellidos, @user, SHA2(@password, 256), @correo, @telefono, @fechaNacimiento)";
+                    transaction = conn.BeginTransaction();
 
-                    MySqlCommand comando = new MySqlCommand(query, conexion);
-                    comando.Parameters.AddWithValue("@nombre", usuario.Nombre);
-                    comando.Parameters.AddWithValue("@apellidos", usuario.Apellidos);
-                    comando.Parameters.AddWithValue("@user", usuario.User);
-                    comando.Parameters.AddWithValue("@password", usuario.Password);
-                    comando.Parameters.AddWithValue("@correo", usuario.Correo);
-                    comando.Parameters.AddWithValue("@telefono", usuario.Telefono);
-                    comando.Parameters.AddWithValue("@fechaNacimiento", usuario.FechaNacimiento);
-
-                    int filasAfectadas = comando.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    string query = "UPDATE product SET descontinuado = 1 WHERE id = @id";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn, transaction))
                     {
-                        exito = true;
+                        cmd.Parameters.AddWithValue("@id", productoId);
+                        int filasAfectadas = cmd.ExecuteNonQuery();
+
+                        if (filasAfectadas > 0)
+                        {
+                            // 2. Si todo va bien, confirma (Commit) la transacción
+                            transaction.Commit();
+                            exito = true;
+                        }
+                        else
+                        {
+                            // 3. Si no se afectaron filas (ID no existía), revierte (Rollback)
+                            transaction.Rollback();
+                        }
                     }
                 }
+                catch (MySqlException ex)
+                {
+                    // 3. Si hay cualquier error de SQL, revierte (Rollback)
+                    Console.WriteLine("Error en transacción: " + ex.Message);
+                    try
+                    {
+                        if (transaction != null)
+                        {
+                            transaction.Rollback();
+                        }
+                    }
+                    catch (Exception rbEx)
+                    {
+                        Console.WriteLine("Error crítico al hacer rollback: " + rbEx.Message);
+                    }
+
+                    throw new Exception("Error al procesar la transacción para descontinuar.", ex);
+                }
             }
-            catch (MySqlException ex)
-            {
-                Console.WriteLine("Error al registrar usuario: " + ex.Message);
-            }
+
             return exito;
         }
-
-        /// <summary>
-        /// Obtiene una lista de todos los usuarios registrados en la base de datos.
-        /// </summary>
-        /// <returns>Una lista de objetos clsUser.</returns>
-        public List<clsUser> ObtenerUsuarios()
-        {
-            List<clsUser> listaUsuarios = new List<clsUser>();
-            try
-            {
-                using (MySqlConnection conexion = ObtenerConexion())
-                {
-                    string query = "SELECT nombre, apellidos, user, status, correo, telefono, fechaNacimiento, fechaCreacion FROM user";
-                    MySqlCommand comando = new MySqlCommand(query, conexion);
-                    MySqlDataReader reader = comando.ExecuteReader();
-
-                    while (reader.Read())
-                    {
-                        clsUser usuario = new clsUser
-                        {
-                            Nombre = reader.GetString("nombre"),
-                            Apellidos = reader.GetString("apellidos"),
-                            User = reader.GetString("user"),
-                            Status = reader.GetBoolean("status"),
-                            Correo = reader.GetString("correo"),
-                            Telefono = reader.GetString("telefono"),
-                            FechaNacimiento = reader.GetDateTime("fechaNacimiento").ToString("yyyy-MM-dd"),
-                            FechaCreacion = reader.GetDateTime("fechaCreacion").ToString("yyyy-MM-dd HH:mm:ss")
-                        };
-                        listaUsuarios.Add(usuario);
-                    }
-                }
-            }
-            catch (MySqlException ex)
-            {
-                Console.WriteLine("Error al obtener usuarios: " + ex.Message);
-            }
-            return listaUsuarios;
-        }
-
-        public bool ValidarUsuario(string user)
-        {
-            bool UsuarioDisponible = true;
-            try
-            {
-                using (MySqlConnection conexion = ObtenerConexion())
-                {
-                    string query = "SELECT COUNT(*) FROM user WHERE user = @user";
-                    MySqlCommand comando = new MySqlCommand(query, conexion);
-                    comando.Parameters.AddWithValue("@user", user);
-
-                    int count = Convert.ToInt32(comando.ExecuteScalar());
-
-                    if (count > 0)
-                    {
-                        UsuarioDisponible = false;
-                    }
-                }
-            }
-            catch (MySqlException ex)
-            {
-                Console.WriteLine("Error de conexión: " + ex.Message);
-            }
-            return UsuarioDisponible;
-        }
-
     }
 }

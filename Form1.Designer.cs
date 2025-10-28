@@ -28,68 +28,71 @@
         /// </summary>
         private void InitializeComponent()
         {
-            label1 = new Label();
-            textBox1 = new TextBox();
-            dataGridView1 = new DataGridView();
-            button1 = new Button();
-            ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
+            lblCodigo = new Label();
+            txtCodigoBarras = new TextBox();
+            dgvProductos = new DataGridView();
+            btnDescontinuar = new Button();
+            ((System.ComponentModel.ISupportInitialize)dgvProductos).BeginInit();
             SuspendLayout();
-            // 
-            // label1
-            // 
-            label1.AutoSize = true;
-            label1.Location = new Point(282, 84);
-            label1.Name = "label1";
-            label1.Size = new Size(50, 20);
-            label1.TabIndex = 0;
-            label1.Text = "label1";
-            // 
-            // textBox1
-            // 
-            textBox1.Location = new Point(281, 168);
-            textBox1.Name = "textBox1";
-            textBox1.Size = new Size(125, 27);
-            textBox1.TabIndex = 1;
-            // 
-            // dataGridView1
-            // 
-            dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridView1.Location = new Point(282, 239);
-            dataGridView1.Name = "dataGridView1";
-            dataGridView1.RowHeadersWidth = 51;
-            dataGridView1.Size = new Size(300, 188);
-            dataGridView1.TabIndex = 2;
-            // 
-            // button1
-            // 
-            button1.Location = new Point(297, 468);
-            button1.Name = "button1";
-            button1.Size = new Size(94, 29);
-            button1.TabIndex = 3;
-            button1.Text = "button1";
-            button1.UseVisualStyleBackColor = true;
-            // 
-            // Form1
-            // 
+            
+            lblCodigo.AutoSize = true;
+            lblCodigo.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            lblCodigo.Location = new Point(34, 30);
+            lblCodigo.Name = "lblCodigo";
+            lblCodigo.Size = new Size(132, 20);
+            lblCodigo.TabIndex = 0;
+            lblCodigo.Text = "Código de Barras:";
+            
+            txtCodigoBarras.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            txtCodigoBarras.Location = new Point(172, 27);
+            txtCodigoBarras.Name = "txtCodigoBarras";
+            txtCodigoBarras.Size = new Size(596, 27);
+            txtCodigoBarras.TabIndex = 1;
+            
+            txtCodigoBarras.KeyPress += txtCodigoBarras_KeyPress;
+             
+            dgvProductos.AllowUserToAddRows = false;
+            dgvProductos.AllowUserToDeleteRows = false;
+            dgvProductos.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            dgvProductos.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvProductos.Location = new Point(34, 76);
+            dgvProductos.Name = "dgvProductos";
+            dgvProductos.RowHeadersWidth = 51;
+            dgvProductos.Size = new Size(734, 334);
+            dgvProductos.TabIndex = 2;
+            
+            btnDescontinuar.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            btnDescontinuar.BackColor = Color.IndianRed;
+            btnDescontinuar.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            btnDescontinuar.ForeColor = Color.White;
+            btnDescontinuar.Location = new Point(603, 429);
+            btnDescontinuar.Name = "btnDescontinuar";
+            btnDescontinuar.Size = new Size(165, 43);
+            btnDescontinuar.TabIndex = 3;
+            btnDescontinuar.Text = "DESCONTINUAR";
+            btnDescontinuar.UseVisualStyleBackColor = false;
+            
+            btnDescontinuar.Click += btnDescontinuar_Click;
+            
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1041, 632);
-            Controls.Add(button1);
-            Controls.Add(dataGridView1);
-            Controls.Add(textBox1);
-            Controls.Add(label1);
+            ClientSize = new Size(800, 495);
+            Controls.Add(btnDescontinuar);
+            Controls.Add(dgvProductos);
+            Controls.Add(txtCodigoBarras);
+            Controls.Add(lblCodigo);
             Name = "Form1";
-            Text = "Form1";
-            ((System.ComponentModel.ISupportInitialize)dataGridView1).EndInit();
+            Text = "Gestión de Productos";
+            ((System.ComponentModel.ISupportInitialize)dgvProductos).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
 
         #endregion
 
-        private Label label1;
-        private TextBox textBox1;
-        private DataGridView dataGridView1;
-        private Button button1;
+        private Label lblCodigo;
+        private TextBox txtCodigoBarras;
+        private DataGridView dgvProductos;
+        private Button btnDescontinuar;
     }
 }
