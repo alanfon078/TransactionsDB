@@ -33,6 +33,11 @@ namespace TransactionsDB.Interfaz
 
         private void btnGuardar_Click(object sender, EventArgs e)
         {
+            if (txtCodigoBarras.Text.Length < 7 || txtCodigoBarras.Text.Length > 13)
+            {
+                MessageBox.Show("El Código de Barras debe de tener una longitud entre 7 y 13 caracteres", "Error en Código de barras", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(txtCodigoBarras.Text) ||
                 string.IsNullOrWhiteSpace(txtNombre.Text))
@@ -41,41 +46,57 @@ namespace TransactionsDB.Interfaz
                 return;
             }
 
-            if (!decimal.TryParse(txtPrecio.Text, out decimal precio) ||
-                !int.TryParse(txtStock.Text, out int stock))
+            try
             {
-                MessageBox.Show("El Precio y el Stock deben ser números válidos.", "Formato incorrecto", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (int.Parse(txtPrecio.Text) < 0 || int.Parse(txtStock.Text) < 0)
+                {
+                    MessageBox.Show("El Precio y el Stock deben ser números enteros válidos\n " +
+                        "mayores a 0 para precio y meyores o iguales a 0 para stock.", "Formato incorrecto", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+            catch (FormatException)
+            {
+            }
+
+            if (!decimal.TryParse(txtPrecio.Text, out decimal precio) || !int.TryParse(txtStock.Text, out int stock))
+            {
+                MessageBox.Show("El Precio y el Stock deben ser números válidos", "Formato incorrecto", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
+            
+
             Producto nuevoProducto = new Producto
-            {
-                CodigoDeBarras = txtCodigoBarras.Text.Trim(),
-                Nombre = txtNombre.Text.Trim(),
-                Precio = precio,
-                Stock = stock
+                {
+                    CodigoDeBarras = txtCodigoBarras.Text.Trim(),
+                    Nombre = txtNombre.Text.Trim(),
+                    Precio = decimal.Parse(txtPrecio.Text.Trim()),
+                    Stock = int.Parse(txtStock.Text.Trim())
             };
 
-            try
-            {
-                int nuevoId = _datosProducto.AgregarProducto(nuevoProducto);
+                try
+                {
+                    int nuevoId = _datosProducto.AgregarProducto(nuevoProducto);
 
-                if (nuevoId > 0)
-                {
-                    nuevoProducto.Id = nuevoId;
-                    this.ProductoCreado = nuevoProducto;
-                    this.DialogResult = DialogResult.OK;
-                    this.Close();
+                    if (nuevoId > 0)
+                    {
+                        nuevoProducto.Id = nuevoId;
+                        this.ProductoCreado = nuevoProducto;
+                        this.DialogResult = DialogResult.OK;
+                        this.Close();
+                    }
+                    else
+                    {
+                        MessageBox.Show("No se pudo guardar el producto.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    MessageBox.Show("No se pudo guardar el producto.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(ex.Message, "Error al Guardar", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error al Guardar", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+
+                }
+            
         }
-    }
 }
